@@ -6,11 +6,10 @@ import urllib.request
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 MODELO = "llama3.2"
 MAX_PASSOS = 6
+SEMENTES = [40, 41, 42, 43, 44]
 PERGUNTA = "Quantas temporadas tem a série Dark e qual nota a dupla deu para ela?"
-SISTEMA = (
-    "Você é o assistente do catálogo de filmes e séries da dupla. "
-    "Use as ferramentas para obter os dados e nunca invente informações."
-)
+SISTEMA = ("Você é o assistente do catálogo de filmes e séries da dupla. "
+           "Use as ferramentas para obter os dados e nunca invente informações.")
 DESCRICAO_VAGA = "faz uma consulta"
 
 CATALOGO = {
@@ -49,21 +48,21 @@ def declarar(func, descricao=None) -> dict:
     }}
 
 
-def chamar_modelo(mensagens: list[dict], tools: list[dict]) -> dict:
+def chamar_modelo(mensagens: list[dict], tools: list[dict], semente: int) -> dict:
     corpo = {"model": MODELO, "messages": mensagens, "tools": tools, "stream": False,
-             "options": {"temperature": 0, "seed": 42}}
+             "options": {"temperature": 0.2, "seed": semente}}
     requisicao = urllib.request.Request(OLLAMA_URL, json.dumps(corpo).encode(), {"Content-Type": "application/json"})
     with urllib.request.urlopen(requisicao, timeout=600) as resposta:
         return json.load(resposta)["message"]
 
 
-def rodar(modo: str) -> int | None:
+def rodar(modo: str, semente: int) -> int | None:
     """Executa o laço e devolve quantos passos levou, ou None se estourou MAX_PASSOS."""
     tools = [declarar(listar_catalogo), declarar(detalhes_titulo, DESCRICAO_VAGA if modo == "vaga" else None)]
     mensagens = [{"role": "system", "content": SISTEMA}, {"role": "user", "content": PERGUNTA}]
-    print(f"\n=== Descrição {modo}: {tools[1]['function']['description']!r}")
+    print(f"\n=== Descrição {modo} | semente {semente}: {tools[1]['function']['description']!r}")
     for passo in range(1, MAX_PASSOS + 1):
-        mensagem = chamar_modelo(mensagens, tools)
+        mensagem = chamar_modelo(mensagens, tools, semente)
         mensagens.append(mensagem)
         chamadas = mensagem.get("tool_calls") or []
         if not chamadas:
@@ -81,9 +80,20 @@ def rodar(modo: str) -> int | None:
     return None
 
 
+def executar_experimentos(modos=("boa", "vaga")) -> dict:
+    """Executa cinco pares e resume os passos de cada tipo de descrição."""
+    resultados = {modo: [] for modo in modos}
+    print(f"Modelo: {MODELO} | Pergunta: {PERGUNTA}")
+    for semente in SEMENTES:
+        for modo in modos:
+            resultados[modo].append(rodar(modo, semente))
+    for modo, passos in resultados.items():
+        concluidos = [p for p in passos if p is not None]
+        media = sum(concluidos) / len(concluidos) if concluidos else 0
+        print(f"Descrição {modo}: passos {passos} | média {media:.1f}")
+    return resultados
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    modos = sys.argv[1:] or ["boa", "vaga"]
-    print(f"Modelo: {MODELO} | Pergunta: {PERGUNTA}")
-    passos = {modo: rodar(modo) for modo in modos}
-    print("\nResumo:", ", ".join(f"descrição {m} = {p or 'sem resposta'} passo(s)" for m, p in passos.items()))
+    executar_experimentos(sys.argv[1:] or ("boa", "vaga"))
