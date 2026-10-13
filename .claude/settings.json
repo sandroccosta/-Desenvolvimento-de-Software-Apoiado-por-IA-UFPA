@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__filme-certo__buscar_filmes",
+      "mcp__filme-certo__detalhes_filme",
+      "mcp__filme-certo__recomendar_filmes",
+      "mcp__filme-certo__ver_listas"
+    ],
+    "ask": ["mcp__filme-certo__marcar_na_lista", "mcp__filme-certo__avaliar_filme"]
+  }
+}

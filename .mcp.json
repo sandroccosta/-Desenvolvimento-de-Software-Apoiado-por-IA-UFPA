@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "filme-certo": {
+      "type": "http",
+      "url": "https://dsai-ap1-filme-certo.vercel.app/api/mcp"
+    }
+  }
+}
